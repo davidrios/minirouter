@@ -1,0 +1,31 @@
+{
+  "interfaces": ["enp5s0", "wlan0"],
+  "logging": {
+    "version": 1,
+    "disable_existing_loggers": true,
+    "formatters": {
+      "default": {
+        "datefmt": "%Y%m%d_%H%M%S",
+        "format": "%(asctime)s.%(msecs)03d:%(name)s:%(levelname)s:%(message)s"
+      }
+    },
+    "handlers": {
+      "console": {
+        "level": "DEBUG",
+        "class": "logging.StreamHandler",
+        "formatter": "default"
+      }
+    },
+    "loggers": {
+      "": {
+        "level": "WARNING",
+        "handlers": ["console"]
+      },
+      "minirouter": {
+        "level": "DEBUG",
+        "handlers": ["console"],
+        "propagate": false
+      }
+    }
+  }
+}
