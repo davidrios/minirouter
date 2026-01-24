@@ -259,6 +259,68 @@ class StatusUi(StateMachine):
         )
 
 
+class MenuUi(StateMachine):
+    selected_opt1 = State(initial=True)
+    selected_opt2 = State()
+    selected_go_back = State()
+
+    cycle_options = (
+        selected_opt1.to(selected_opt2) | selected_opt2.to(selected_go_back) | selected_go_back.to(selected_opt1)
+    )
+
+    reset_options = (
+        selected_opt1.to(selected_opt1) | selected_opt2.to(selected_opt1) | selected_go_back.to(selected_opt1)
+    )
+
+    def __init__(self, display_size, font):
+        self.display_size = display_size
+        self.font = font
+        super().__init__()
+
+    def press_a(self):
+        if self.current_state.id == "selected_go_back":
+            self.reset_options()
+            return True
+
+    def press_b(self):
+        self.cycle_options()
+
+    def draw_options(self, draw):
+        for idx, opt in enumerate(("option 1", "option 2", "voltar")):
+            draw.text(
+                (0, -2 + (idx * 7)),
+                f"  {opt}",
+                font=self.font,
+                fill=1,
+            )
+
+    def draw(self):
+        image = Image.new("1", self.display_size)
+
+        draw = ImageDraw.Draw(image)
+
+        # clear display
+        draw.rectangle((0, 0, *self.display_size), outline=0, fill=0, width=0)
+
+        self.draw_options(draw)
+
+        cursor_pos = -2
+
+        if self.current_state.id == "selected_opt2":
+            cursor_pos = -2 + 7
+        elif self.current_state.id == "selected_go_back":
+            cursor_pos = -2 + 7 + 7
+
+        draw.text(
+            (0, cursor_pos),
+            ">",
+            font=self.font,
+            fill=1,
+        )
+
+        return image
+
+
 Size = namedtuple("Size", "width height")
 
 
@@ -278,6 +340,7 @@ class Ui(StateMachine):
         self.display_size = Size(*self.config["display"]["size"])
         self.font = ImageFont.truetype("ProFontOTB.otb", config["display"]["font_size"])
         self.status_ui = StatusUi(self.display_size, self.font)
+        self.menu_ui = MenuUi(self.display_size, self.font)
         self.last_draw = 0
         self.last_screen_refresh = 0
         self.last_data = None
@@ -302,12 +365,17 @@ class Ui(StateMachine):
     def press_a(self):
         if self.current_state.id == "on_status":
             self.status_ui.press_a()
+        elif self.current_state.id == "on_menu":
+            if self.menu_ui.press_a():
+                self.back_to_status()
 
         self.force_refresh()
 
     def press_b(self):
         if self.current_state.id == "on_status":
-            self.status_ui.press_b()
+            self.show_menu()
+        elif self.current_state.id == "on_menu":
+            self.menu_ui.press_b()
 
         self.force_refresh()
 
@@ -322,6 +390,8 @@ class Ui(StateMachine):
             image = None
             if self.current_state.id == "on_status":
                 image = self.status_ui.draw()
+            elif self.current_state.id == "on_menu":
+                image = self.menu_ui.draw()
             else:
                 image = self.draw_initializing()
 

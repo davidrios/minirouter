@@ -1,5 +1,12 @@
 {
   "interfaces": ["enp5s0", "wlan0"],
+  "display": {
+    "size": [128, 32],
+    "font_size": 10
+  },
+  "output": "console",
+  "output_scale": 6,
+  "refresh": 1,
   "logging": {
     "version": 1,
     "disable_existing_loggers": true,
