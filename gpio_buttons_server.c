@@ -1,5 +1,4 @@
 #include <czmq.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -99,7 +98,7 @@ int main(void) {
     zclock_sleep(POLL_RATE_MS);
   }
 
-  printf("Stopping GPIO Monitor...\n");
+  printf("Stopping...\n");
 
   zsock_destroy(&publisher);
 

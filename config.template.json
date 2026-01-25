@@ -4,7 +4,7 @@
     "size": [128, 32],
     "font_size": 10
   },
-  "output": "screen",
+  "output": "display",
   "output_scale": 6,
   "refresh": 1,
   "buttons_server": {

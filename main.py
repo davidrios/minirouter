@@ -342,12 +342,12 @@ class Ui(StateMachine):
         self.status_ui = StatusUi(self.display_size, self.font)
         self.menu_ui = MenuUi(self.display_size, self.font)
         self.last_draw = 0
-        self.last_screen_refresh = 0
+        self.last_display_refresh = 0
         self.last_data = None
-        self.force_refresh_count = 0
+        self.last_image = None
 
         self.display_backend = None
-        self.screen_refresh_rate = 5
+        self.display_refresh_rate = 5
 
         super().__init__()
 
@@ -390,6 +390,11 @@ class Ui(StateMachine):
                 target=serve_web,
                 daemon=True,
             ).start()
+        elif self.config["output"] == "display":
+            ctx = zmq.Context()
+            sock = ctx.socket(zmq.REQ)
+            sock.connect(self.config["display_server"])
+            self.display_server = sock
 
         buttons_server = self.config.get("buttons_server")
         if buttons_server:
@@ -446,8 +451,7 @@ class Ui(StateMachine):
         self.force_refresh()
 
     def force_refresh(self):
-        self.force_refresh_count = 0
-        self.last_screen_refresh = 0
+        self.last_display_refresh = 0
         self.last_draw = 0
 
     def draw(self):
@@ -471,9 +475,21 @@ class Ui(StateMachine):
                 wrapper = wrapper.resize([i * scale for i in wrapper.size])
                 image = wrapper
 
-            data = BytesIO()
-            image.save(data, "bmp")
-            self.last_data = data
+                data = BytesIO()
+                image.save(data, "bmp")
+                self.last_data = data
+            elif self.config["output"] == "display":
+                self.last_data = bytearray(image.get_flattened_data())
+
+            self.last_image = image
+
+        if not ((time() - self.last_display_refresh) < self.display_refresh_rate):
+            self.last_display_refresh = time()
+
+            if self.config["output"] == "display" and self.last_image is not None:
+                self.display_server.send(self.last_data)
+                if self.display_server.recv() != b"a":
+                    log.error("Received unexpected response from display server")
 
     def draw_initializing(self):
         image = Image.new("1", self.display_size)
@@ -491,6 +507,11 @@ class Ui(StateMachine):
         )
 
         return image
+
+    def cleanup(self):
+        if self.config["output"] == "display":
+            self.display_server.send(b"\x00" * self.display_size[0] * self.display_size[1])
+            self.display_server.recv()
 
 
 def main():
@@ -532,13 +553,17 @@ def main():
 
     last_debug = 0
 
-    while True:
-        if time() - last_debug > refresh:
-            log.debug("statuses: %s", statuses)
-            last_debug = time()
+    try:
+        while True:
+            if time() - last_debug > refresh:
+                log.debug("statuses: %s", statuses)
+                last_debug = time()
 
-        ui.draw()
-        sleep(0.01)
+            ui.draw()
+            sleep(0.01)
+    except KeyboardInterrupt:
+        log.info("exiting...")
+        ui.cleanup()
 
 
 if __name__ == "__main__":

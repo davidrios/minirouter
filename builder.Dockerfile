@@ -9,7 +9,7 @@ RUN set -e \
 
 RUN set -e \
  && cd ~/WiringPi/wiringPi\
- && make DESTDIR=/opt/minirouter PREFIX=/. install -j4
+ && make install -j4
 
 RUN set -e\
  && cd ~/libssd1306\

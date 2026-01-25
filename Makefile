@@ -1,19 +1,29 @@
 CC = gcc
+DEST?= /opt/minirouter
 
-CFLAGS = -Wall -Wextra -O2 -I/opt/minirouter/include 
+CFLAGS = -Wall -Wextra -O2 -I$(DEST)/include 
 
 # Linker flags (Libraries):
 # -lczmq      : Link against the high-level ZeroMQ library
 # -lwiringPi  : Link against the WiringPi GPIO library
 # -lpthread   : Link against the POSIX threading library (needed for mutexes)
-LDFLAGS = -lczmq -lwiringPi -lpthread -L/opt/minirouter/lib -Wl,-rpath,'$$ORIGIN/../lib'
+LDFLAGS = -lczmq -L$(DEST)/lib -Wl,-rpath,'$(DEST)/lib'
 
-all: gpio_buttons_server 
+all: gpio_buttons_server ssd1306_i2c_server
 
 gpio_buttons_server: gpio_buttons_server.c
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ -lwiringPi $(LDFLAGS) 
+
+ssd1306_i2c_server: ssd1306_i2c_server.c
+	$(CC) $(CFLAGS) -o $@ $^ -lssd1306_i2c $(LDFLAGS)
 
 clean:
-	rm -f gpio_buttons_server
+	rm -f gpio_buttons_server ssd1306_i2c_server
 
-.PHONY: all clean
+install: all
+	mkdir -p $(DEST)/bin
+	cp gpio_buttons_server ssd1306_i2c_server $(DEST)/bin/
+	chown root:root -R $(DEST)/bin
+	chmod +s $(DEST)/bin/*
+
+.PHONY: all clean install
