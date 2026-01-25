@@ -14,7 +14,6 @@ import evdev
 import requests
 import requests.packages.urllib3.util.connection as urllib3_cn
 import sdbus
-import sixel
 from PIL import Image, ImageDraw, ImageFont
 from sdbus_block.networkmanager import (
     AccessPoint,
@@ -214,7 +213,7 @@ class StatusUi(StateMachine):
                 text += wifi["ssid"]
                 if wifi["strength"] <= 0:
                     signal = 0
-                elif wifi["strength"] <= 100:
+                elif wifi["strength"] >= 100:
                     signal = 4
                 else:
                     signal = int(wifi["strength"] / 25) + 1
@@ -346,17 +345,51 @@ class Ui(StateMachine):
         self.last_data = None
         self.force_refresh_count = 0
 
-        if config["output"] == "console":
-            self.display_backend = sixel.SixelWriter()
-            self.screen_refresh_rate = 1
-        else:
-            self.display_backend = None
-            self.screen_refresh_rate = 5
+        self.display_backend = None
+        self.screen_refresh_rate = 5
 
         super().__init__()
 
     def do_initialization(self):
         log.debug("doing initialization")
+
+        def listen_kbd(kbd):
+            for event in kbd.read_loop():
+                if event.value != 0:
+                    continue
+
+                try:
+                    if event.code == evdev.ecodes.KEY_A:
+                        self.press_a()
+                    elif event.code == evdev.ecodes.KEY_S:
+                        self.press_b()
+                except Exception:
+                    log.exception("error processing key press")
+
+        kbds = [
+            d
+            for d in [evdev.InputDevice(path) for path in evdev.list_devices()]
+            if evdev.ecodes.KEY_A in d.capabilities().get(evdev.events.EV_KEY, [])
+        ]
+
+        for kbd in kbds:
+            threading.Thread(
+                target=listen_kbd,
+                args=(kbd,),
+                daemon=True,
+            ).start()
+
+        if self.config["output"] == "web":
+            from web_output import get_server
+
+            def serve_web():
+                get_server(lambda: self.last_data).serve_forever()
+
+            threading.Thread(
+                target=serve_web,
+                daemon=True,
+            ).start()
+
         return True
 
     def after_initialize(self):
@@ -395,7 +428,7 @@ class Ui(StateMachine):
             else:
                 image = self.draw_initializing()
 
-            if self.config["output"] == "console":
+            if self.config["output"] == "web":
                 wrapper_size = [i + 3 for i in self.display_size]
                 wrapper = Image.new("1", wrapper_size)
                 draw = ImageDraw.Draw(wrapper)
@@ -403,18 +436,11 @@ class Ui(StateMachine):
                 wrapper.paste(image, (1, 1))
                 scale = self.config.get("output_scale", 1)
                 wrapper = wrapper.resize([i * scale for i in wrapper.size])
+                image = wrapper
 
-                data = BytesIO()
-                wrapper.save(data, "bmp")
-                self.last_data = data
-
-        if not ((time() - self.last_screen_refresh) < self.screen_refresh_rate) or self.force_refresh_count < 10:
-            self.force_refresh_count = min(self.force_refresh_count + 1, 100)
-            self.last_screen_refresh = time()
-
-            if self.last_data is not None:
-                if self.config["output"] == "console":
-                    self.display_backend.draw(self.last_data)
+            data = BytesIO()
+            image.save(data, "bmp")
+            self.last_data = data
 
     def draw_initializing(self):
         image = Image.new("1", self.display_size)
@@ -470,31 +496,6 @@ def main():
 
     ui = Ui(config)
     ui.initialize()
-
-    def listen_kbd(kbd):
-        for event in kbd.read_loop():
-            if event.value != 0:
-                continue
-
-            try:
-                if event.code == evdev.ecodes.KEY_A:
-                    ui.press_a()
-                elif event.code == evdev.ecodes.KEY_S:
-                    ui.press_b()
-            except Exception:
-                log.exception("error processing key press")
-
-    kbds = [
-        d
-        for d in [evdev.InputDevice(path) for path in evdev.list_devices()]
-        if evdev.ecodes.KEY_A in d.capabilities().get(evdev.events.EV_KEY, [])
-    ]
-    for kbd in kbds:
-        threading.Thread(
-            target=listen_kbd,
-            args=(kbd,),
-            daemon=True,
-        ).start()
 
     last_debug = 0
 
