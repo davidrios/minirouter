@@ -14,6 +14,7 @@ import evdev
 import requests
 import requests.packages.urllib3.util.connection as urllib3_cn
 import sdbus
+import zmq
 from PIL import Image, ImageDraw, ImageFont
 from sdbus_block.networkmanager import (
     AccessPoint,
@@ -387,6 +388,38 @@ class Ui(StateMachine):
 
             threading.Thread(
                 target=serve_web,
+                daemon=True,
+            ).start()
+
+        buttons_server = self.config.get("buttons_server")
+        if buttons_server:
+
+            def buttons_server_loop():
+                context = zmq.Context()
+                subscriber = context.socket(zmq.SUB)
+
+                subscriber.connect(buttons_server["address"])
+                subscriber.setsockopt_string(zmq.SUBSCRIBE, "")
+
+                log.info("Waiting for buttons server events...")
+
+                try:
+                    while True:
+                        button = int(subscriber.recv_string())
+                        button_num = abs(button)
+                        is_pressed = button_num * buttons_server["direction"] == button
+
+                        if is_pressed:
+                            if button_num == buttons_server["button_a"]:
+                                self.press_a()
+                            elif button_num == buttons_server["button_b"]:
+                                self.press_b()
+                finally:
+                    subscriber.close()
+                    context.term()
+
+            threading.Thread(
+                target=buttons_server_loop,
                 daemon=True,
             ).start()
 

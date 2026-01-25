@@ -4,9 +4,15 @@
     "size": [128, 32],
     "font_size": 10
   },
-  "output": "web",
+  "output": "screen",
   "output_scale": 6,
   "refresh": 1,
+  "buttons_server": {
+    "address": "tcp://localhost:5555",
+    "button_a": 5,
+    "button_b": 6,
+    "direction": -1
+  },
   "logging": {
     "version": 1,
     "disable_existing_loggers": true,
