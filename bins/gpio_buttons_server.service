@@ -1,0 +1,14 @@
+[Unit]
+Description=GPIO Buttons Server
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/default/gpio_buttons_server
+ExecStart=/opt/minirouter/bin/gpio_buttons_server
+Restart=on-failure
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

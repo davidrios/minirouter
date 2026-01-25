@@ -1,0 +1,4 @@
+# Configuration for ssd1306_i2c_server
+# Place this file at /etc/default/ssd1306_i2c_server
+
+# Add environment variables here if needed

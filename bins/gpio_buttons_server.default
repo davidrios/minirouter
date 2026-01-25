@@ -1,0 +1,5 @@
+# Configuration for gpio_buttons_server
+# Place this file at /etc/default/gpio_buttons_server
+
+GPIO_PINS=5,6
+SERVER_PORT=5556

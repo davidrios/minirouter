@@ -1,0 +1,14 @@
+[Unit]
+Description=SSD1306 I2C OLED Server
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/default/ssd1306_i2c_server
+ExecStart=/opt/minirouter/bin/ssd1306_i2c_server
+Restart=on-failure
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

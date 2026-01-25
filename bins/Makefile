@@ -3,10 +3,6 @@ DEST?= /opt/minirouter
 
 CFLAGS = -Wall -Wextra -O2 -I$(DEST)/include 
 
-# Linker flags (Libraries):
-# -lczmq      : Link against the high-level ZeroMQ library
-# -lwiringPi  : Link against the WiringPi GPIO library
-# -lpthread   : Link against the POSIX threading library (needed for mutexes)
 LDFLAGS = -lczmq -L$(DEST)/lib -Wl,-rpath,'$(DEST)/lib'
 
 all: gpio_buttons_server ssd1306_i2c_server
