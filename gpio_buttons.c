@@ -44,7 +44,7 @@ int main(void) {
     return 1;
   }
 
-  printf("GPIO Monitor started. Publishing events on port %d...\n",
+  printf("Server started. Publishing button events on port %d...\n",
          server_port);
 
   if (wiringPiSetup() == -1) {
@@ -90,7 +90,6 @@ int main(void) {
 
         int msg_val = pin * direction;
 
-        printf("sending %d\n", msg_val);
         zstr_sendf(publisher, "%d", msg_val);
 
         last_state[pin] = current_val;
