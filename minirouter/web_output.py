@@ -21,7 +21,7 @@ class ImageHandler(BaseHTTPRequestHandler):
         <html>
         <head>
             <style>
-                body { font-family: sans-serif; text-align: center; padding: 50px; }
+                body { font-family: sans-serif; text-align: center; padding: 50px; background-color: black; }
                 img { border: 5px solid #333; margin-top: 20px; }
             </style>
         </head>

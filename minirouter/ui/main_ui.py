@@ -78,7 +78,7 @@ class MainUi(StateMachine):
             ).start()
 
         if self.config["output"] == "web":
-            from web_output import get_server
+            from ..web_output import get_server
 
             def serve_web():
                 get_server(lambda: self.last_data).serve_forever()
@@ -163,14 +163,8 @@ class MainUi(StateMachine):
                 image = self.draw_initializing()
 
             if self.config["output"] == "web":
-                wrapper_size = [i + 3 for i in self.display_size]
-                wrapper = Image.new("1", wrapper_size)
-                draw = ImageDraw.Draw(wrapper)
-                draw.rectangle((0, 0, *[i - 2 for i in wrapper_size]), outline=1, fill=1, width=1)
-                wrapper.paste(image, (1, 1))
                 scale = self.config.get("output_scale", 1)
-                wrapper = wrapper.resize([i * scale for i in wrapper.size])
-                image = wrapper
+                image = image.resize([i * scale for i in image.size])
 
                 data = BytesIO()
                 image.save(data, "bmp")
