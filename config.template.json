@@ -5,6 +5,7 @@
     "font_size": 10
   },
   "output": "display",
+  "display_server": "tcp://192.168.15.38:5555",
   "output_scale": 6,
   "refresh": 1,
   "buttons_server": {
