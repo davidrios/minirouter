@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from PIL import Image, ImageDraw
 from statemachine import State, StateMachine
@@ -107,7 +108,7 @@ class StatusUi(StateMachine):
         )
 
     def draw_time(self, draw):
-        text = self.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        text = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         draw.text(
             (0, 22),

@@ -2,6 +2,7 @@ import logging
 import threading
 from collections import namedtuple
 from io import BytesIO
+from pathlib import Path
 from time import time
 
 import evdev
@@ -9,15 +10,17 @@ import zmq
 from PIL import Image, ImageDraw, ImageFont
 from statemachine import State, StateMachine
 
-from .ui.menu import MenuUi
-from .ui.status import StatusUi
+from .menu import MenuUi
+from .status import StatusUi
 
 log = logging.getLogger(__name__)
+
+FONT_FILE = Path(__file__).parent.parent / "data" / "ProFontOTB.otb"
 
 Size = namedtuple("Size", "width height")
 
 
-class Ui(StateMachine):
+class MainUi(StateMachine):
     initializing = State(initial=True)
     initialized = State()
     on_status = State()
@@ -28,11 +31,12 @@ class Ui(StateMachine):
     show_menu = on_status.to(on_menu)
     back_to_status = on_menu.to(on_status)
 
-    def __init__(self, config):
+    def __init__(self, config, statuses):
         self.config = config
+        self.statuses = statuses
         self.display_size = Size(*self.config["display"]["size"])
-        self.font = ImageFont.truetype("ProFontOTB.otb", config["display"]["font_size"])
-        self.status_ui = StatusUi(self.display_size, self.font)
+        self.font = ImageFont.truetype(FONT_FILE, config["display"]["font_size"])
+        self.status_ui = StatusUi(self.display_size, self.font, self.statuses)
         self.menu_ui = MenuUi(self.display_size, self.font)
         self.last_draw = 0
         self.last_display_refresh = 0
