@@ -48,12 +48,7 @@ class StatusUi(StateMachine):
 
             self.draw_time(draw)
         elif self.current_state.id == "showing_page2":
-            draw.text(
-                (0, -2),
-                "page 2",
-                font=self.font,
-                fill=1,
-            )
+            self.draw_interfaces(draw)
 
         return image
 
@@ -116,3 +111,12 @@ class StatusUi(StateMachine):
             font=self.font,
             fill=1,
         )
+
+    def draw_interfaces(self, draw):
+        for idx, device in enumerate(self.statuses["interfaces"]["devices"].values()):
+            draw.text(
+                (0, -2 + (8 * idx)),
+                f"{device['interface']}:{device.get('ip4') or '-'}",
+                font=self.font,
+                fill=1,
+            )

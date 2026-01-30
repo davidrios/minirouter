@@ -24,7 +24,7 @@ from .ui.main_ui import MainUi
 
 urllib3_cn.HAS_IPV6 = False
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("minirouter.main")
 
 
 statuses = {
@@ -87,7 +87,7 @@ def get_interfaces(network_manager, interfaces=None):
     return devices
 
 
-def run_interfaces_loop(interfaces, refresh):
+def run_interfaces_loop(interfaces, refresh_rate):
     sdbus.set_default_bus(sdbus.sd_bus_open_system())
     network_manager = NetworkManager()
 
@@ -97,7 +97,7 @@ def run_interfaces_loop(interfaces, refresh):
             statuses["interfaces"] = res
         except Exception:
             log.exception("error in ips loop")
-        sleep(refresh)
+        sleep(refresh_rate)
 
 
 def check_dns_working(hostname):
@@ -108,7 +108,7 @@ def check_dns_working(hostname):
         return None
 
 
-def run_dns_loop(hostname, refresh):
+def run_dns_loop(hostname, refresh_rate):
     while True:
         try:
             is_dns_working = check_dns_working(hostname)
@@ -116,7 +116,7 @@ def run_dns_loop(hostname, refresh):
         except Exception:
             log.exception("error in dns loop")
             statuses["dns"] = False
-        sleep(refresh)
+        sleep(refresh_rate)
 
 
 def get_wan_ip():
@@ -133,7 +133,7 @@ def get_wan_ip():
     return res.content.decode() if is_ip else "online"
 
 
-def run_wan_ip_loop(refresh):
+def run_wan_ip_loop(refresh_rate):
     while True:
         try:
             wan_ip = get_wan_ip()
@@ -141,7 +141,7 @@ def run_wan_ip_loop(refresh):
         except Exception:
             log.exception("error in wan ip loop")
             statuses["wan_ip"] = "-error-"
-        sleep(refresh)
+        sleep(refresh_rate)
 
 
 def main():
@@ -156,25 +156,23 @@ def main():
 
     log.info("starting")
 
-    config["refresh"] = config.get("refresh", 1)
-
-    refresh = config["refresh"]
+    refresh_rate = config["data_refresh_rate"]
 
     threading.Thread(
         target=run_interfaces_loop,
-        args=(config.get("interfaces"), refresh),
+        args=(config.get("interfaces"), refresh_rate),
         daemon=True,
     ).start()
 
     threading.Thread(
         target=run_dns_loop,
-        args=(config.get("check_dns", "google.com"), refresh),
+        args=(config.get("check_dns", "google.com"), refresh_rate),
         daemon=True,
     ).start()
 
     threading.Thread(
         target=run_wan_ip_loop,
-        args=(refresh,),
+        args=(refresh_rate,),
         daemon=True,
     ).start()
 
@@ -185,7 +183,7 @@ def main():
 
     try:
         while True:
-            if time() - last_debug > refresh:
+            if time() - last_debug > refresh_rate:
                 log.debug("statuses: %s", statuses)
                 last_debug = time()
 

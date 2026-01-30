@@ -13,6 +13,9 @@ dependencies = [
     "sdbus-networkmanager>=2.0.0",
 ]
 
+[project.scripts]
+minirouter = "minirouter.main:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

@@ -10,7 +10,7 @@ import zmq
 from PIL import Image, ImageDraw, ImageFont
 from statemachine import State, StateMachine
 
-from .menu import MenuUi
+from .menu import MainMenu
 from .status import StatusUi
 
 log = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class MainUi(StateMachine):
     initialize = initializing.to(initialized, cond="do_initialization")
     start_status = initialized.to(on_status)
     show_menu = on_status.to(on_menu)
-    back_to_status = on_menu.to(on_status)
+    back_to_status = on_menu.to(on_status) | on_status.to(on_status)
 
     def __init__(self, config, statuses):
         self.config = config
@@ -37,14 +37,15 @@ class MainUi(StateMachine):
         self.display_size = Size(*self.config["display"]["size"])
         self.font = ImageFont.truetype(FONT_FILE, config["display"]["font_size"])
         self.status_ui = StatusUi(self.display_size, self.font, self.statuses)
-        self.menu_ui = MenuUi(self.display_size, self.font)
+        self.menu_ui = MainMenu(self.display_size, self.font)
         self.last_draw = 0
         self.last_display_refresh = 0
         self.last_data = None
         self.last_image = None
+        self.last_interaction = 0
+        self.in_standby = False
 
         self.display_backend = None
-        self.display_refresh_rate = 5
 
         super().__init__()
 
@@ -90,7 +91,7 @@ class MainUi(StateMachine):
         elif self.config["output"] == "display":
             ctx = zmq.Context()
             sock = ctx.socket(zmq.REQ)
-            sock.connect(self.config["display_server"])
+            sock.connect(self.config["display"]["server"])
             self.display_server = sock
 
         buttons_server = self.config.get("buttons_server")
@@ -125,42 +126,65 @@ class MainUi(StateMachine):
                 daemon=True,
             ).start()
 
+        self.last_interaction = time()
+
+        self.blank_image = Image.new("1", self.display_size)
+
         return True
 
     def after_initialize(self):
         self.start_status()
 
+    def after_back_to_status(self):
+        self.menu_ui.reset()
+
     def press_a(self):
-        if self.current_state.id == "on_status":
-            self.status_ui.press_a()
-        elif self.current_state.id == "on_menu":
-            if self.menu_ui.press_a():
-                self.back_to_status()
+        if not self.in_standby:
+            if self.current_state.id == "on_status":
+                self.status_ui.press_a()
+            elif self.current_state.id == "on_menu":
+                if self.menu_ui.press_a():
+                    self.back_to_status()
 
         self.force_refresh()
 
     def press_b(self):
-        if self.current_state.id == "on_status":
-            self.show_menu()
-        elif self.current_state.id == "on_menu":
-            self.menu_ui.press_b()
+        if not self.in_standby:
+            if self.current_state.id == "on_status":
+                self.show_menu()
+            elif self.current_state.id == "on_menu":
+                self.menu_ui.press_b()
 
         self.force_refresh()
 
     def force_refresh(self):
         self.last_display_refresh = 0
         self.last_draw = 0
+        self.last_interaction = time()
+        self.in_standby = False
 
     def draw(self):
-        if not ((time() - self.last_draw) < self.config["refresh"]):
+        if time() - self.last_interaction >= self.config["standby_timeout"]:
+            self.back_to_status()
+            self.in_standby = True
+
+        if time() - self.last_interaction >= self.config["standby_timeout"] * 2:
+            # return later to give a chance to draw the blank screen
+            return
+
+        if time() - self.last_draw >= self.config["data_refresh_rate"]:
             self.last_draw = time()
             image = None
-            if self.current_state.id == "on_status":
-                image = self.status_ui.draw()
-            elif self.current_state.id == "on_menu":
-                image = self.menu_ui.draw()
+
+            if self.in_standby:
+                image = self.blank_image
             else:
-                image = self.draw_initializing()
+                if self.current_state.id == "on_status":
+                    image = self.status_ui.draw()
+                elif self.current_state.id == "on_menu":
+                    image = self.menu_ui.draw()
+                else:
+                    image = self.draw_initializing()
 
             if self.config["output"] == "web":
                 scale = self.config.get("output_scale", 1)
@@ -174,7 +198,7 @@ class MainUi(StateMachine):
 
             self.last_image = image
 
-        if not ((time() - self.last_display_refresh) < self.display_refresh_rate):
+        if time() - self.last_display_refresh >= self.config["display"]["refresh_rate"]:
             self.last_display_refresh = time()
 
             if self.config["output"] == "display" and self.last_image is not None:

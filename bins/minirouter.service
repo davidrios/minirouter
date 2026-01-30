@@ -1,0 +1,14 @@
+[Unit]
+Description=Minirouter Server
+After=network.target
+
+[Service]
+Type=simple
+Environment=CONFIG_FILE="/etc/minirouter.json"
+ExecStart=/opt/minirouter/bin/minirouter
+Restart=on-failure
+User=minirouter
+Group=minirouter
+
+[Install]
+WantedBy=multi-user.target
